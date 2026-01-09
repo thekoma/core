@@ -56,7 +56,7 @@ async def test_error_handling(
 ) -> None:
     """Test that client errors are caught."""
     with patch(
-        "google.genai.chats.AsyncChat.send_message_stream",
+        "google.genai.models.AsyncModels.generate_content_stream",
         new_callable=AsyncMock,
         side_effect=error,
     ):
@@ -211,7 +211,9 @@ async def test_function_call(
         result.response.as_dict()["speech"]["plain"]["speech"]
         == "I've called the test function with the provided parameters."
     )
-    mock_tool_response_parts = mock_send_message_stream.mock_calls[1][2]["message"]
+    mock_tool_response_parts = mock_send_message_stream.mock_calls[1][2]["contents"][
+        -1
+    ].parts
     assert len(mock_tool_response_parts) == 1
     assert mock_tool_response_parts[0].model_dump() == {
         "code_execution_result": None,
@@ -237,20 +239,17 @@ async def test_function_call(
     }
 
     # Test history conversion for multi-turn conversation
-    with patch(
-        "google.genai.chats.AsyncChats.create", return_value=AsyncMock()
-    ) as mock_create:
-        mock_create.return_value.send_message_stream = mock_send_message_stream
-        await conversation.async_converse(
-            hass,
-            "Thank you!",
-            mock_chat_log.conversation_id,
-            context,
-            agent_id=agent_id,
-            device_id="test_device",
-        )
+    # Test history conversion for multi-turn conversation
+    await conversation.async_converse(
+        hass,
+        "Thank you!",
+        mock_chat_log.conversation_id,
+        context,
+        agent_id=agent_id,
+        device_id="test_device",
+    )
 
-    assert mock_create.call_args[1].get("history") == snapshot
+    assert mock_send_message_stream.call_args.kwargs.get("contents")[:-1] == snapshot
 
 
 @pytest.mark.usefixtures("mock_init_component")
@@ -300,24 +299,23 @@ async def test_google_search_tool_is_sent(
 
     mock_send_message_stream.return_value = messages
 
-    with patch(
-        "google.genai.chats.AsyncChats.create", return_value=AsyncMock()
-    ) as mock_create:
-        mock_create.return_value.send_message_stream = mock_send_message_stream
-        result = await conversation.async_converse(
-            hass,
-            "Who won the 2024 FIFA World Cup?",
-            mock_chat_log.conversation_id,
-            context,
-            agent_id=agent_id,
-            device_id="test_device",
-        )
+    result = await conversation.async_converse(
+        hass,
+        "Who won the 2024 FIFA World Cup?",
+        mock_chat_log.conversation_id,
+        context,
+        agent_id=agent_id,
+        device_id="test_device",
+    )
     assert result.response.response_type == intent.IntentResponseType.ACTION_DONE
     assert (
         result.response.as_dict()["speech"]["plain"]["speech"]
         == "The last winner of the 2024 FIFA World Cup was Argentina."
     )
-    assert mock_create.mock_calls[0][2]["config"].tools[-1].google_search is not None
+    assert (
+        mock_send_message_stream.call_args.kwargs["config"].tools[-1].google_search
+        is not None
+    )
 
 
 @pytest.mark.usefixtures("mock_init_component")
@@ -671,21 +669,17 @@ async def test_empty_content_in_chat_history(
     mock_chat_log.async_add_user_content(UserContent(first_input))
     mock_chat_log.async_add_user_content(UserContent(second_input))
 
-    with patch(
-        "google.genai.chats.AsyncChats.create", return_value=AsyncMock()
-    ) as mock_create:
-        mock_create.return_value.send_message_stream = mock_send_message_stream
-        await conversation.async_converse(
-            hass,
-            "Hello",
-            mock_chat_log.conversation_id,
-            context,
-            agent_id=agent_id,
-            device_id="test_device",
-        )
+    await conversation.async_converse(
+        hass,
+        "Hello",
+        mock_chat_log.conversation_id,
+        context,
+        agent_id=agent_id,
+        device_id="test_device",
+    )
 
-    _, kwargs = mock_create.call_args
-    actual_history = kwargs.get("history")
+    _, kwargs = mock_send_message_stream.call_args
+    actual_history = kwargs.get("contents")
 
     assert actual_history[0].parts[0].text == first_input
     assert actual_history[1].parts[0].text == " "
@@ -731,21 +725,17 @@ async def test_history_always_user_first_turn(
         )
     )
 
-    with patch(
-        "google.genai.chats.AsyncChats.create", return_value=AsyncMock()
-    ) as mock_create:
-        mock_create.return_value.send_message_stream = mock_send_message_stream
-        await conversation.async_converse(
-            hass,
-            "Hello",
-            mock_chat_log.conversation_id,
-            context,
-            agent_id=agent_id,
-            device_id="test_device",
-        )
+    await conversation.async_converse(
+        hass,
+        "Hello",
+        mock_chat_log.conversation_id,
+        context,
+        agent_id=agent_id,
+        device_id="test_device",
+    )
 
-    _, kwargs = mock_create.call_args
-    actual_history = kwargs.get("history")
+    _, kwargs = mock_send_message_stream.call_args
+    actual_history = kwargs.get("contents")
 
     assert actual_history[0].parts[0].text == " "
     assert actual_history[0].role == "user"

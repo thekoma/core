@@ -125,29 +125,29 @@ async def setup_ha(hass: HomeAssistant) -> None:
 
 
 @pytest.fixture
-def mock_chat_create() -> Generator[AsyncMock]:
+def mock_generate_content_stream() -> Generator[AsyncMock]:
     """Mock stream response."""
 
     async def mock_generator(stream):
         for value in stream:
             yield value
 
-    mock_send_message_stream = AsyncMock()
-    mock_send_message_stream.side_effect = lambda **kwargs: mock_generator(
-        mock_send_message_stream.return_value.pop(0)
+    mock_generate = AsyncMock()
+    mock_generate.side_effect = lambda **kwargs: mock_generator(
+        mock_generate.return_value.pop(0)
     )
 
     with patch(
-        "google.genai.chats.AsyncChats.create",
-        return_value=AsyncMock(send_message_stream=mock_send_message_stream),
-    ) as mock_create:
-        yield mock_create
+        "google.genai.models.AsyncModels.generate_content_stream",
+        new=mock_generate,
+    ) as mock_stream:
+        yield mock_stream
 
 
 @pytest.fixture
-def mock_send_message_stream(mock_chat_create) -> Generator[AsyncMock]:
+def mock_send_message_stream(mock_generate_content_stream) -> Generator[AsyncMock]:
     """Mock stream response."""
-    return mock_chat_create.return_value.send_message_stream
+    return mock_generate_content_stream
 
 
 @pytest.fixture

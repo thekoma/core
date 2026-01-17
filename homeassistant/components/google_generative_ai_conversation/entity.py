@@ -6,7 +6,7 @@ import asyncio
 import base64
 import codecs
 from collections.abc import AsyncGenerator, AsyncIterator, Callable
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 import mimetypes
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, cast
@@ -25,7 +25,6 @@ from google.genai.types import (
     GoogleSearch,
     HarmCategory,
     Part,
-    PartUnionDict,
     SafetySetting,
     Schema,
     ThinkingConfig,
@@ -594,14 +593,6 @@ class GoogleGenerativeAILLMBaseEntity(Entity):
             if chat_content.role == "tool_result":
                 tool_results.append(chat_content)
                 continue
-
-            if (
-                not isinstance(chat_content, conversation.ToolResultContent)
-                and chat_content.content == ""
-            ):
-                # Skipping is not possible since the number of function calls need to match the number of function responses
-                # and skipping one would mean removing the other and hence this would prevent a proper chat log
-                chat_content = replace(chat_content, content=" ")
 
             if tool_results:
                 if last_role != "model":

@@ -41,6 +41,10 @@ CONF_DANGEROUS_BLOCK_THRESHOLD = "dangerous_block_threshold"
 RECOMMENDED_HARM_BLOCK_THRESHOLD = "BLOCK_MEDIUM_AND_ABOVE"
 CONF_USE_GOOGLE_SEARCH_TOOL = "enable_google_search_tool"
 RECOMMENDED_USE_GOOGLE_SEARCH_TOOL = False
+# Opt-in toggle for explicit Gemini context caching. Inactive scaffolding,
+# see context_cache.py and the tracking issue.
+CONF_ENABLE_CONTEXT_CACHE = "enable_context_cache"
+RECOMMENDED_ENABLE_CONTEXT_CACHE = False
 
 TIMEOUT_MILLIS = 10000
 FILE_POLLING_INTERVAL_SECONDS = 0.05

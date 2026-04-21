@@ -534,6 +534,13 @@ class GoogleGenerativeAILLMBaseEntity(Entity):
                 chat_log.content, prompt if not supports_system_instruction else None
             )
 
+            # TODO: explicit context caching hook. When the feature is enabled
+            # and the payload clears the per-model minimum, resolve a cache
+            # name via ContextCacheManager and set
+            # generateContentConfig.cached_content = <name> here. The system
+            # instruction and tool declarations move into the cache, so they
+            # must be stripped from the per-call config on a cache hit. See
+            # context_cache.py and the tracking issue.
             try:
                 chat_response_generator = (
                     await self._genai_client.aio.models.generate_content_stream(
